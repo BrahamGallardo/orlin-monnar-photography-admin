@@ -148,6 +148,22 @@ export interface AppointmentDto extends BaseDto {
   adminNotes: string | null
 }
 
+/**
+ * Optional payload of the confirm and cancel actions.
+ *
+ * @remarks
+ * The body is not optional even though every field is: the controller binds it with
+ * `[FromBody] AppointmentStatusChangeDto dto`, a non nullable parameter, so an empty
+ * body is rejected by `[ApiController]` with a 400. Always send the object.
+ *
+ * `adminNotes` is internal: the backend never includes it in the message sent to the
+ * client, and a null or blank value leaves the stored notes untouched.
+ */
+export interface AppointmentStatusChangeDto {
+  /** Internal notes. At most {@link ADMIN_NOTES_MAX_LENGTH} characters. */
+  adminNotes: string | null
+}
+
 /* -------------------------------------------------------------------------- */
 /* Gallery                                                                     */
 /* -------------------------------------------------------------------------- */

@@ -1,5 +1,5 @@
 import { http } from '@/lib/http'
-import type { AppointmentDto, AppointmentStatus, PaginatedList } from '@/types/api'
+import type { AppointmentDto, AppointmentStatus, AppointmentStatusChangeDto, PaginatedList } from '@/types/api'
 
 /**
  * Query functions for `api/admin/appointments`.
@@ -24,6 +24,9 @@ export const APPOINTMENT_STATUSES: readonly AppointmentStatus[] = [
   'Cancelled',
   'Completed'
 ]
+
+/** Maximum length of `AdminNotes`, mirroring the `[StringLength(1000)]` attribute. */
+export const ADMIN_NOTES_MAX_LENGTH = 1000
 
 /** Pagination and cancellation options shared by every paged query. */
 export interface PagedQuery {
@@ -93,4 +96,42 @@ export function getUpcomingAppointments(
  */
 export function getAppointmentById(id: number, signal?: AbortSignal): Promise<AppointmentDto> {
   return http.get<AppointmentDto>(`${BASE_PATH}/${id}`, { signal })
+}
+
+/**
+ * Confirms an appointment and notifies the client by email.
+ *
+ * @param id - Appointment identifier.
+ * @param change - Optional administrator notes.
+ * @returns The appointment as it was left by the transition.
+ * @throws {ApiError} `validation` when the transition is rejected: the appointment is
+ * already confirmed. The message written by the domain travels in `detail`.
+ * @throws {ApiError} `notFound` when the appointment does not exist.
+ * @remarks
+ * Deliberately takes no `AbortSignal`: the server sends the email as part of the
+ * request, so aborting the call locally would leave the panel unsure of the outcome.
+ */
+export function confirmAppointment(
+  id: number,
+  change: AppointmentStatusChangeDto
+): Promise<AppointmentDto> {
+  return http.post<AppointmentDto>(`${BASE_PATH}/${id}/confirm`, change)
+}
+
+/**
+ * Cancels an appointment and notifies the client by email.
+ *
+ * @param id - Appointment identifier.
+ * @param change - Optional administrator notes.
+ * @returns The appointment as it was left by the transition.
+ * @throws {ApiError} `validation` when the transition is rejected: the appointment is
+ * already cancelled.
+ * @throws {ApiError} `notFound` when the appointment does not exist.
+ * @remarks See {@link confirmAppointment} on why no signal is accepted.
+ */
+export function cancelAppointment(
+  id: number,
+  change: AppointmentStatusChangeDto
+): Promise<AppointmentDto> {
+  return http.post<AppointmentDto>(`${BASE_PATH}/${id}/cancel`, change)
 }
