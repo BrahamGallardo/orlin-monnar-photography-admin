@@ -107,6 +107,12 @@ export interface RequestOptions {
    * @internal Set by the client itself to keep the retry from recursing.
    */
   skipAuthRetry?: boolean
+    /**
+   * Skips both the refresh and retry and the session teardown performed on a 401.
+   *
+   * @internal Set on the refresh call itself, whose 401 is handled by its caller.
+   */
+  skipAuthHandling?: boolean
 }
 
 /* -------------------------------------------------------------------------- */
@@ -336,8 +342,7 @@ async function toApiError(response: Response): Promise<ApiError> {
   const detail = problem?.detail ?? fallback.detail
   const fieldErrors: FieldErrors = problem?.errors ?? {}
 
-  const kind =
-    response.status === 400 && Object.keys(fieldErrors).length > 0 ? 'validation' : fallback.kind
+  const kind = fallback.kind
 
   return new ApiError(kind, response.status, title, detail, fieldErrors)
 }
@@ -408,7 +413,7 @@ async function runRenewal(): Promise<boolean> {
   try {
     const session = await request<SessionDto>('/api/auth/refresh', {
       method: 'POST',
-      skipAuthRetry: true
+      skipAuthHandling: true
     })
 
     setSession(session)
@@ -459,7 +464,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     signal,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     anonymous = false,
-    skipAuthRetry = false
+    skipAuthRetry = false,
+    skipAuthHandling = false
   } = options
 
   const isFormData = body instanceof FormData
@@ -520,13 +526,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     return readBody<T>(response)
   }
 
-  // Single refresh and retry. It only helps inside the token clock skew window:
-  // once the token is truly expired, the refresh endpoint answers 401 as well.
-  if (response.status === 401 && !skipAuthRetry && !anonymous) {
-    const renewed = await renewSession()
+  // A 401 tears the session down. The single refresh and retry only helps inside the
+  // token clock skew window: once the token is truly expired, the refresh endpoint
+  // answers 401 as well.
+  if (response.status === 401 && !anonymous && !skipAuthHandling) {
+    if (!skipAuthRetry) {
+      const renewed = await renewSession()
 
-    if (renewed) {
-      return request<T>(path, { ...options, skipAuthRetry: true })
+      if (renewed) {
+        return request<T>(path, { ...options, skipAuthRetry: true })
+      }
     }
 
     await endSession()

@@ -93,6 +93,11 @@ function scheduleRenewal(value: SessionDto): void {
   }
 
   const lifetime = expiresAt - Date.now()
+
+  if (lifetime <= MIN_RENEWAL_DELAY_MS) {
+    return
+  }
+
   const delay = Math.max(lifetime * RENEWAL_THRESHOLD, MIN_RENEWAL_DELAY_MS)
 
   if (lifetime <= MIN_RENEWAL_DELAY_MS) {

@@ -6,10 +6,10 @@
  */
 
 /** Locale used across the admin panel. */
-const DEFAULT_LOCALE = 'es-MX'
+const DEFAULT_LOCALE = 'en-US'
 
 /** Currency assumed when a DTO carries no explicit code. */
-const DEFAULT_CURRENCY = 'MXN'
+const DEFAULT_CURRENCY = 'USD'
 
 /** Placeholder rendered for a null or unparsable value. */
 const EMPTY_PLACEHOLDER = '—'
