@@ -125,7 +125,7 @@ export interface PackageDto extends BaseDto {
  *
  * @remarks Mirrors the `omp_domain.Common.AppointmentStatus` constants.
  */
-export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled'
+export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed'
 
 /** Booked appointment, as consumed by the admin panel. */
 export interface AppointmentDto extends BaseDto {
