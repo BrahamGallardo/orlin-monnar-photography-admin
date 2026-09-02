@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import {
   AlertDialogCancel,
   AlertDialogContent,
@@ -20,6 +21,9 @@ import Button from '@/components/ui/Button.vue'
  * so a failure keeps the dialog open showing {@link errorMessage}.
  */
 
+/** Warning used by the callers that do not set one of their own. */
+const DEFAULT_WARNING = 'Esta acción envía un correo automático al cliente. No se puede deshacer.'
+
 const props = defineProps<{
   /** Controlled open state. */
   open: boolean
@@ -35,12 +39,26 @@ const props = defineProps<{
   isBusy?: boolean
   /** Failure of the last attempt, if any. */
   errorMessage?: string | null
+  /**
+   * Warning shown above the actions.
+   *
+   * @remarks
+   * Omitted falls back to {@link DEFAULT_WARNING}, the copy of the appointment actions,
+   * which are the only callers that predate this prop. Null hides the block, for an
+   * action that neither notifies anyone nor is irreversible.
+   */
+  warning?: string | null
 }>()
 
 const emit = defineEmits<{
   (event: 'update:open', open: boolean): void
   (event: 'confirm'): void
 }>()
+
+/** Warning to render, or null when the caller opted out. */
+const warningText = computed((): string | null =>
+  props.warning === undefined ? DEFAULT_WARNING : props.warning
+)
 
 /**
  * Blocks a dismissal while the action is in flight.
@@ -75,11 +93,12 @@ const onDismissAttempt = (event: Event): void => {
           </AlertDialogDescription>
         </div>
 
-        <div class="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+        <div
+          v-if="warningText !== null"
+          class="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3"
+        >
           <AlertTriangle :size="16" class="mt-0.5 shrink-0 text-amber-700" />
-          <p class="text-xs text-amber-700">
-            Esta acción envía un correo automático al cliente. No se puede deshacer.
-          </p>
+          <p class="text-xs text-amber-700">{{ warningText }}</p>
         </div>
 
         <slot />

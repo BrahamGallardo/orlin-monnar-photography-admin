@@ -20,12 +20,27 @@ const props = defineProps<{
   hasNextPage: boolean
   /** Blocks every control, while a page is being fetched. */
   disabled?: boolean
+  /** Singular noun of the paged resource. Defaults to `cita`. */
+  singularLabel?: string
+  /** Plural noun of the paged resource. Defaults to `citas`. */
+  pluralLabel?: string
   class?: string
 }>()
 
 const emit = defineEmits<{
   (event: 'change', pageIndex: number): void
 }>()
+
+/**
+ * Noun matching the number of items reported by the backend.
+ *
+ * @remarks
+ * The appointments wording is the default: it is the only caller that predates these
+ * props, and keeping it here leaves that view untouched.
+ */
+const itemLabel = computed((): string =>
+  props.totalCount === 1 ? (props.singularLabel ?? 'cita') : (props.pluralLabel ?? 'citas')
+)
 
 /**
  * Numbered pages to render, as a window centred on the current page.
@@ -85,8 +100,7 @@ const goTo = (pageIndex: number): void => {
     :class="cn('flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between', $props.class)"
   >
     <p class="text-sm text-muted-foreground">
-      Mostrando {{ rangeStart }}–{{ rangeEnd }} de {{ totalCount }}
-      {{ totalCount === 1 ? 'cita' : 'citas' }}
+      Mostrando {{ rangeStart }}–{{ rangeEnd }} de {{ totalCount }} {{ itemLabel }}
     </p>
 
     <nav class="flex items-center gap-1" aria-label="Paginación">
