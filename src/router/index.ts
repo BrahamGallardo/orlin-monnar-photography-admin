@@ -2,60 +2,31 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 
 const router = createRouter({
-  history: createWebHistory('/material-dashboard-shadcn-vue/'),
+  history: createWebHistory('/admin/'),
   routes: [
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/Login.vue')
+    },
     {
       path: '/',
       component: MainLayout,
       children: [
         {
           path: '',
-          redirect: '/dashboard'
-        },
-        {
-          path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/Dashboard.vue')
         },
         {
-          path: 'contacts',
-          name: 'Contacts',
-          component: () => import('@/views/Contacts.vue')
+          path: 'appointments',
+          name: 'Appointments',
+          component: () => import('@/views/Appointments.vue')
         },
         {
-          path: 'companies',
-          name: 'Companies',
-          component: () => import('@/views/Companies.vue')
-        },
-        {
-          path: 'deals',
-          name: 'Deals',
-          component: () => import('@/views/Deals.vue')
-        },
-        {
-          path: 'tasks',
-          name: 'Tasks',
-          component: () => import('@/views/Tasks.vue')
-        },
-        {
-          path: 'reports',
-          name: 'Reports',
-          component: () => import('@/views/Reports.vue')
-        },
-        {
-          path: 'billing',
-          name: 'Billing',
-          component: () => import('@/views/Billing.vue')
-        },
-        {
-          path: 'settings',
-          name: 'Settings',
-          component: () => import('@/views/Settings.vue')
-        },
-        {
-          path: 'docs',
-          name: 'Docs',
-          component: () => import('@/views/Docs.vue')
+          path: 'gallery',
+          name: 'Gallery',
+          component: () => import('@/views/Gallery.vue')
         }
       ]
     }

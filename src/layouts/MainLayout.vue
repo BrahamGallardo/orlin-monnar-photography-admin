@@ -5,16 +5,10 @@ import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
 import {
   LayoutDashboard,
-  Users,
-  Building2,
-  TrendingUp,
-  CheckSquare,
-  BarChart3,
-  Settings,
-  BookOpen,
+  CalendarDays,
+  Images,
   ChevronLeft,
-  ChevronRight,
-  CreditCard
+  ChevronRight
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -22,15 +16,9 @@ const sidebarOpen = ref(true)
 const isMobile = ref(false)
 
 const navigation = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Contacts', path: '/contacts', icon: Users },
-  { name: 'Companies', path: '/companies', icon: Building2 },
-  { name: 'Deals', path: '/deals', icon: TrendingUp },
-  { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { name: 'Reports', path: '/reports', icon: BarChart3 },
-  { name: 'Billing', path: '/billing', icon: CreditCard },
-  { name: 'Settings', path: '/settings', icon: Settings },
-  { name: 'Docs', path: '/docs', icon: BookOpen }
+  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { name: 'Citas', path: '/appointments', icon: CalendarDays },
+  { name: 'Galería', path: '/gallery', icon: Images }
 ]
 
 const checkMobile = () => {
@@ -73,7 +61,9 @@ onUnmounted(() => {
       isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'
     ]">
       <div class="p-4 border-b flex items-center justify-between">
-        <h3 v-if="sidebarOpen" class="text-sm font-semibold">Material Shadcn Vue</h3>
+        <h3 v-if="sidebarOpen" class="text-sm font-semibold leading-tight">
+          Orlin Monnar Photography — Admin
+        </h3>
         <button @click="toggleSidebar" class="p-2 hover:bg-accent rounded-md hidden lg:block"
           :class="{ 'mx-auto': !sidebarOpen }">
           <ChevronRight v-if="!sidebarOpen" :size="20" />

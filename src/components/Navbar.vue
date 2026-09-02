@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { Search, Menu, User, CreditCard, LogOut, ChevronDown } from 'lucide-vue-next'
+import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
 
 defineProps<{
   onToggleSidebar: () => void
 }>()
 
-const router = useRouter()
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
 
@@ -22,11 +20,6 @@ const toggleAccountDropdown = () => {
 
 const closeAccountDropdown = () => {
   accountDropdownOpen.value = false
-}
-
-const navigateToBilling = () => {
-  router.push('/billing')
-  closeAccountDropdown()
 }
 
 const handleLogout = () => {
@@ -105,14 +98,6 @@ const handleLogout = () => {
                   <p class="text-sm font-medium">John Doe</p>
                   <p class="text-xs text-muted-foreground">john@example.com</p>
                 </div>
-
-                <button
-                  @click="navigateToBilling"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent"
-                >
-                  <CreditCard :size="16" />
-                  <span>Billing</span>
-                </button>
 
                 <button
                   @click="handleLogout"

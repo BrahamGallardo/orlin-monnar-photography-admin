@@ -30,3 +30,6 @@ server/public
 vite.config.ts.*
 *.tar.gz
 build
+
+# TypeScript
+tsconfig.tsbuildinfo
