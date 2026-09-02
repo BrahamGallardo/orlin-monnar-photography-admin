@@ -1,5 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import { useSession } from '@/stores/session'
+
+/** Query string key carrying the route to restore after signing in. */
+export const REDIRECT_QUERY_KEY = 'redirect'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Whether the route requires an active session. Defaults to false. */
+    requiresAuth?: boolean
+  }
+}
 
 const router = createRouter({
   history: createWebHistory('/admin/'),
@@ -12,6 +23,7 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -31,6 +43,29 @@ const router = createRouter({
       ]
     }
   ]
+})
+
+/**
+ * Keeps private routes behind an active session.
+ *
+ * @remarks
+ * The token lives in memory only, so a hard reload signs the user out and any deep
+ * link lands here first. The intended route travels in the `redirect` query entry,
+ * the same one `@/lib/http` writes when a 401 tears the session down.
+ */
+router.beforeEach((to) => {
+  const { isAuthenticated } = useSession()
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth === true)
+
+  if (requiresAuth && !isAuthenticated.value) {
+    return { name: 'Login', query: { [REDIRECT_QUERY_KEY]: to.fullPath } }
+  }
+
+  if (to.name === 'Login' && isAuthenticated.value) {
+    return { name: 'Dashboard' }
+  }
+
+  return true
 })
 
 export default router

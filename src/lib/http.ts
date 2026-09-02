@@ -378,8 +378,11 @@ let renewalInFlight: Promise<boolean> | null = null
  * Renews the session once, coalescing concurrent callers.
  *
  * @returns Whether the session was renewed.
+ * @remarks
+ * Exported so that `@/stores/session` can expose it as `refresh()` without
+ * duplicating the coalescing and the `skipAuthHandling` handling done here.
  */
-function renewSession(): Promise<boolean> {
+export function renewSession(): Promise<boolean> {
   if (renewalInFlight === null) {
     renewalInFlight = runRenewal().then(
       (renewed) => {

@@ -45,6 +45,38 @@ export interface PaginatedList<T> {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Authenticated user, as nested in {@link SessionDto} and returned by
+ * `GET /api/auth/me`.
+ *
+ * @remarks
+ * It deliberately does not extend {@link BaseDto}: the backend `AuthUserDto` exposes
+ * `createdDate` but no `updatedDate`, even though the `AuthUsers` table has that
+ * column.
+ */
+export interface AuthUserDto {
+  /** User identifier. */
+  id: number
+  /** Given name. */
+  name: string
+  /** Family name. Null: the column admits it. */
+  lastName: string | null
+  /** Email address, used as the sign in identifier. */
+  email: string
+  /** Identifier of the assigned role. */
+  roleId: number
+  /** Display name of the role, such as `Admin`. */
+  roleName: string
+  /** Whether the email address was confirmed. */
+  emailVerified: boolean
+  /** Whether the account has a password set. */
+  hasPassword: boolean
+  /** Whether the account is enabled. */
+  activated: boolean
+  /** Creation date, as an ISO 8601 UTC string. */
+  createdDate: string
+}
+
+/**
  * Session returned by `POST /api/auth/login` and `POST /api/auth/refresh`.
  *
  * @remarks
@@ -53,13 +85,14 @@ export interface PaginatedList<T> {
  * token itself, so the session must be renewed *before* `expiresAt` elapses.
  */
 export interface SessionDto {
+  /** Identifier of the authenticated user. Same value as `user.id`. */
+  userId: number
   /** JWT access token, sent as `Authorization: Bearer <token>`. */
   token: string
   /** Token expiration instant, as an ISO 8601 UTC string. */
   expiresAt: string
-  userId: number
-  email: string
-  role: string
+  /** Profile of the authenticated user. */
+  user: AuthUserDto
 }
 
 /* -------------------------------------------------------------------------- */

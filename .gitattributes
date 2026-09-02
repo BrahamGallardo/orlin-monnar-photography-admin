@@ -1,0 +1,8 @@
+# Normaliza a LF en el repositorio para cualquier archivo de texto.
+* text=auto eol=lf
+
+# Binarios de marca y activos: sin normalización.
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary

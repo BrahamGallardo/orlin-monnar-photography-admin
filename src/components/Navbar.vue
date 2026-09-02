@@ -1,13 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
+import { useSession } from '@/stores/session'
 
 defineProps<{
   onToggleSidebar: () => void
 }>()
 
+const router = useRouter()
+const { user, logout } = useSession()
+
 const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
+const isSigningOut = ref(false)
+
+/** Full name of the signed in administrator, for the account menu. */
+const displayName = computed((): string => {
+  const current = user.value
+
+  if (current === null) {
+    return '\u2014'
+  }
+
+  return current.lastName === null ? current.name : `${current.name} ${current.lastName}`
+})
 
 const handleSearch = (e: Event) => {
   e.preventDefault()
@@ -22,9 +39,21 @@ const closeAccountDropdown = () => {
   accountDropdownOpen.value = false
 }
 
-const handleLogout = () => {
-  console.log('Logout clicked')
+/** Revokes the session on the server, then sends the user back to the login view. */
+const handleLogout = async (): Promise<void> => {
+  if (isSigningOut.value) {
+    return
+  }
+
+  isSigningOut.value = true
   closeAccountDropdown()
+
+  try {
+    await logout()
+  } finally {
+    isSigningOut.value = false
+    await router.replace({ name: 'Login' })
+  }
 }
 </script>
 
@@ -72,7 +101,7 @@ const handleLogout = () => {
               <div class="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                 <User :size="18" />
               </div>
-              <span class="hidden sm:block text-sm font-medium">Account</span>
+              <span class="hidden sm:block text-sm font-medium">{{ user?.name ?? 'Account' }}</span>
               <ChevronDown :size="16" class="hidden sm:block" />
             </button>
 
@@ -95,16 +124,18 @@ const handleLogout = () => {
                 class="absolute right-0 mt-2 w-56 bg-card border rounded-md shadow-lg py-1 z-50"
               >
                 <div class="px-4 py-3 border-b">
-                  <p class="text-sm font-medium">John Doe</p>
-                  <p class="text-xs text-muted-foreground">john@example.com</p>
+                  <p class="text-sm font-medium truncate">{{ displayName }}</p>
+                  <p class="text-xs text-muted-foreground truncate">{{ user?.email ?? '' }}</p>
+                  <p class="text-xs text-muted-foreground">{{ user?.roleName ?? '' }}</p>
                 </div>
 
                 <button
                   @click="handleLogout"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent text-red-600"
+                  :disabled="isSigningOut"
+                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent text-red-600 disabled:opacity-50"
                 >
                   <LogOut :size="16" />
-                  <span>Logout</span>
+                  <span>{{ isSigningOut ? 'Cerrando sesi\u00f3n\u2026' : 'Logout' }}</span>
                 </button>
               </div>
             </transition>
