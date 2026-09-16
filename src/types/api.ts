@@ -218,6 +218,21 @@ export interface GalleryCategoryDto extends BaseDto {
   photos: PhotoDto[]
 }
 
+/**
+ * Payload of `PUT /api/admin/gallery/photos/reorder`.
+ *
+ * @remarks
+ * The backend assigns `displayOrder = position` to every identifier received and leaves
+ * any photograph that is not listed untouched. It does not check the category and it
+ * silently skips unknown identifiers. Always send *every* photograph of the category:
+ * sending a single page would restart its numbering at zero and interleave it with the
+ * other pages. `[MinLength(1)]`: an empty array answers 400.
+ */
+export interface ReorderPhotosRequestDto {
+  /** Photograph identifiers in the desired order. */
+  photoIds: number[]
+}
+
 /* -------------------------------------------------------------------------- */
 /* Contact                                                                     */
 /* -------------------------------------------------------------------------- */

@@ -6,6 +6,15 @@ import type { SessionDto } from '@/types/api'
 const DEFAULT_TIMEOUT_MS = 30000
 
 /**
+ * Default timeout of a multipart upload, in milliseconds.
+ *
+ * @remarks
+ * Far above {@link DEFAULT_TIMEOUT_MS}: the request carries the file over the wire and
+ * the server then derives three WebP renditions with ImageSharp before answering.
+ */
+const DEFAULT_UPLOAD_TIMEOUT_MS = 120000
+
+/**
  * Client Closed Request. An nginx convention the backend reuses for cancellations
  * and that this client reproduces for locally aborted requests.
  */
@@ -308,16 +317,17 @@ function classify(status: number): { kind: ApiErrorKind; title: string; detail: 
 }
 
 /**
- * Turns a failed response into an {@link ApiError}.
+ * Builds the error of a status the backend answers without a body.
  *
- * @param response - Response whose status is not in the 2xx range.
+ * @param status - HTTP status code.
+ * @returns The error, or null when the status does carry a body.
  * @remarks
- * 413 and 429 are answered without a body and must not be read: Kestrel closes the
- * connection on an oversized upload before the exception handler runs, and the rate
- * limiter only sets `RejectionStatusCode`. Both messages are produced here.
+ * 413 and 429 must not be read: Kestrel aborts an oversized request body before the
+ * exception handler runs, and the rate limiter only sets `RejectionStatusCode`.
+ * Reading either yields an empty string, never `ProblemDetails`.
  */
-async function toApiError(response: Response): Promise<ApiError> {
-  if (response.status === 413) {
+function toBodylessApiError(status: number): ApiError | null {
+  if (status === 413) {
     return new ApiError(
       'payloadTooLarge',
       413,
@@ -326,13 +336,28 @@ async function toApiError(response: Response): Promise<ApiError> {
     )
   }
 
-  if (response.status === 429) {
+  if (status === 429) {
     return new ApiError(
       'rateLimit',
       429,
       'Demasiadas solicitudes',
       'Alcanzaste el límite de solicitudes. Espera un momento e inténtalo de nuevo.'
     )
+  }
+
+  return null
+}
+
+/**
+ * Turns a failed response into an {@link ApiError}.
+ *
+ * @param response - Response whose status is not in the 2xx range.
+ */
+async function toApiError(response: Response): Promise<ApiError> {
+  const bodyless = toBodylessApiError(response.status)
+
+  if (bodyless !== null) {
+    return bodyless
   }
 
   const problem = await readProblemDetails(response)
@@ -545,6 +570,247 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   throw await toApiError(response)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Multipart upload                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** Bytes transferred so far by an upload. */
+export interface UploadProgress {
+  /** Bytes already sent. */
+  loaded: number
+  /** Total bytes to send, or 0 while it is unknown. */
+  total: number
+  /** Completion between 0 and 1, or null while the total is unknown. */
+  ratio: number | null
+}
+
+/** Options accepted by {@link upload}. */
+export interface UploadOptions {
+  query?: QueryParams
+  headers?: Record<string, string>
+  /** Caller owned signal. Aborting it cancels the request in flight. */
+  signal?: AbortSignal
+  /** Timeout in milliseconds. Defaults to {@link DEFAULT_UPLOAD_TIMEOUT_MS}. */
+  timeoutMs?: number
+  /** Called as the body travels. Never called once the request settles. */
+  onProgress?: (progress: UploadProgress) => void
+  /**
+   * Skips the single refresh and retry performed on a 401.
+   *
+   * @internal Set by the client itself to keep the retry from recursing.
+   */
+  skipAuthRetry?: boolean
+}
+
+/** Outcome of an exchange that reached the server. */
+interface UploadExchange {
+  status: number
+  /** The answer, rebuilt as a `Response` so it flows through {@link toApiError}. */
+  response: Response
+}
+
+/** Everything {@link sendUpload} needs beyond the URL and the body. */
+interface UploadTransport {
+  headers: Record<string, string>
+  timeoutMs: number
+  signal?: AbortSignal
+  onProgress?: (progress: UploadProgress) => void
+}
+
+/**
+ * Sends a multipart body over `XMLHttpRequest`.
+ *
+ * @param url - Absolute or same origin URL.
+ * @param body - Multipart payload.
+ * @param transport - Headers, cancellation, timeout and progress callback.
+ * @throws {ApiError} On transport, timeout or cancellation. A non 2xx answer resolves.
+ * @remarks
+ * `fetch` cannot report upload progress: its request body is not observable, and the
+ * streaming request body that would expose it is not available on every target browser.
+ * `XMLHttpRequest` is the only native option, so it is confined to this function and its
+ * answer is rebuilt as a `Response` to keep one error mapping for the whole client.
+ */
+function sendUpload(
+  url: string,
+  body: FormData,
+  transport: UploadTransport
+): Promise<UploadExchange> {
+  const { headers, timeoutMs, signal, onProgress } = transport
+
+  return new Promise<UploadExchange>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+
+    const onAbortRequested = (): void => xhr.abort()
+
+    const detach = (): void => {
+      if (signal !== undefined) {
+        signal.removeEventListener('abort', onAbortRequested)
+      }
+    }
+
+    const cancelled = (): ApiError =>
+      new ApiError(
+        'cancelled',
+        STATUS_CLIENT_CLOSED_REQUEST,
+        'Solicitud cancelada',
+        'La solicitud se canceló antes de completarse.'
+      )
+
+    xhr.open('POST', url, true)
+    xhr.timeout = timeoutMs
+
+    // The Content-Type is left to the browser on purpose: it is the only party that
+    // knows the multipart boundary it just generated.
+    for (const [name, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(name, value)
+    }
+
+    if (onProgress !== undefined) {
+      xhr.upload.addEventListener('progress', (event: ProgressEvent): void => {
+        onProgress({
+          loaded: event.loaded,
+          total: event.total,
+          ratio: event.lengthComputable && event.total > 0 ? event.loaded / event.total : null
+        })
+      })
+    }
+
+    xhr.addEventListener('load', (): void => {
+      detach()
+
+      // A status of 0 on load means the connection died mid answer, which is what an
+      // oversized body looks like when Kestrel resets before writing the 413.
+      if (xhr.status === 0) {
+        reject(
+          new ApiError(
+            'network',
+            0,
+            'Sin conexión con el servidor',
+            'La conexión se interrumpió durante la subida.'
+          )
+        )
+
+        return
+      }
+
+      const contentType = xhr.getResponseHeader('content-type')
+      const responseHeaders: Record<string, string> =
+        contentType === null ? {} : { 'content-type': contentType }
+      const hasBody = xhr.status !== 204 && xhr.responseText !== ''
+
+      resolve({
+        status: xhr.status,
+        response: new Response(hasBody ? xhr.responseText : null, {
+          status: xhr.status,
+          headers: responseHeaders
+        })
+      })
+    })
+
+    xhr.addEventListener('error', (): void => {
+      detach()
+      reject(
+        new ApiError(
+          'network',
+          0,
+          'Sin conexión con el servidor',
+          'No fue posible contactar al servidor.'
+        )
+      )
+    })
+
+    xhr.addEventListener('timeout', (): void => {
+      detach()
+      reject(
+        new ApiError(
+          'timeout',
+          0,
+          'Tiempo de espera agotado',
+          'El servidor no respondió a tiempo. Verifica tu conexión e inténtalo de nuevo.'
+        )
+      )
+    })
+
+    xhr.addEventListener('abort', (): void => {
+      detach()
+      reject(cancelled())
+    })
+
+    if (signal !== undefined) {
+      if (signal.aborted) {
+        reject(cancelled())
+
+        return
+      }
+
+      signal.addEventListener('abort', onAbortRequested)
+    }
+
+    xhr.send(body)
+  })
+}
+
+/**
+ * Posts a multipart body, reporting progress.
+ *
+ * @param path - Path starting at `/api`.
+ * @param body - Multipart payload.
+ * @param options - Request options.
+ * @typeParam T - Expected payload type.
+ * @throws {ApiError} On any transport, timeout or non 2xx outcome.
+ * @remarks
+ * Mirrors {@link request} in everything the caller can observe: same URL building, same
+ * bearer token, same single refresh and retry on a 401 and the same error model. The
+ * retry resends the same `FormData`, which the browser can read again because its parts
+ * are backed by the original `File` handles.
+ */
+export async function upload<T>(
+  path: string,
+  body: FormData,
+  options: UploadOptions = {}
+): Promise<T> {
+  const {
+    query,
+    headers = {},
+    signal,
+    timeoutMs = DEFAULT_UPLOAD_TIMEOUT_MS,
+    onProgress,
+    skipAuthRetry = false
+  } = options
+
+  const requestHeaders: Record<string, string> = { Accept: 'application/json', ...headers }
+  const token = getAccessToken()
+
+  if (token !== null) {
+    requestHeaders.Authorization = `Bearer ${token}`
+  }
+
+  const exchange = await sendUpload(buildUrl(path, query), body, {
+    headers: requestHeaders,
+    timeoutMs,
+    signal,
+    onProgress
+  })
+
+  if (exchange.response.ok) {
+    return readBody<T>(exchange.response)
+  }
+
+  if (exchange.status === 401) {
+    if (!skipAuthRetry) {
+      const renewed = await renewSession()
+
+      if (renewed) {
+        return upload<T>(path, body, { ...options, skipAuthRetry: true })
+      }
+    }
+
+    await endSession()
+  }
+
+  throw await toApiError(exchange.response)
 }
 
 /* -------------------------------------------------------------------------- */

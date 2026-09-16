@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
-import { EyeOff, ImageOff, Images, Loader2, Pencil, Plus, Undo2 } from 'lucide-vue-next'
+import { EyeOff, ImageOff, ImageUp, Images, Loader2, Pencil, Plus, Undo2 } from 'lucide-vue-next'
+import GalleryPhotosDialog from '@/components/GalleryPhotosDialog.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
@@ -9,8 +10,8 @@ import CardContent from '@/components/ui/CardContent.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import Pagination from '@/components/ui/Pagination.vue'
-import { appConfig } from '@/config'
 import { ApiError } from '@/lib/http'
+import { mediaUrl } from '@/lib/media'
 import {
   CATEGORY_DESCRIPTION_MAX_LENGTH,
   CATEGORY_NAME_MAX_LENGTH,
@@ -194,18 +195,6 @@ const applyFilters = (changes: { page?: number; deactivated?: boolean }): void =
 
   void router.push({ name: 'Gallery', query: next })
 }
-
-/**
- * Resolves a media URL served by the API.
- *
- * @param url - Public URL as stored by the backend, root relative such as `/media/...`.
- * @remarks
- * `StorageSettings.PublicBaseUrl` is `/media`, so the URL resolves on its own only when
- * the panel and the API share an origin, which is the production layout. In development
- * `appConfig.apiBaseUrl` points at the API and has to prefix it.
- */
-const mediaUrl = (url: string): string =>
-  url.startsWith('/') ? `${appConfig.apiBaseUrl.replace(/\/+$/, '')}${url}` : url
 
 /**
  * Reads the value of a native control event.
@@ -406,6 +395,32 @@ const submitForm = async (): Promise<void> => {
     applyFailure(error)
   } finally {
     isSaving.value = false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Photographs                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Category whose photographs are open, or null. */
+const photosCategory = ref<GalleryCategoryDto | null>(null)
+
+/**
+ * Opens the photographs of a category.
+ *
+ * @param category - Row to manage, as listed.
+ * @remarks
+ * Opened from the row already in memory, for the same reason the form is: the detail
+ * endpoint answers 404 for an unpublished category.
+ */
+const startPhotos = (category: GalleryCategoryDto): void => {
+  photosCategory.value = category
+}
+
+/** Closes the photographs dialog. */
+const onPhotosOpenChange = (open: boolean): void => {
+  if (!open) {
+    photosCategory.value = null
   }
 }
 
@@ -620,6 +635,17 @@ const submitAction = async (): Promise<void> => {
                         type="button"
                         variant="ghost"
                         size="sm"
+                        :aria-label="`Fotografías de ${category.name}`"
+                        @click="startPhotos(category)"
+                      >
+                        <ImageUp :size="16" class="mr-2" />
+                        Fotos
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         :aria-label="`Editar ${category.name}`"
                         @click="startEdit(category)"
                       >
@@ -776,6 +802,13 @@ const submitAction = async (): Promise<void> => {
         </div>
       </template>
     </Dialog>
+
+    <GalleryPhotosDialog
+      :open="photosCategory !== null"
+      :category="photosCategory"
+      @update:open="onPhotosOpenChange"
+      @changed="load"
+    />
 
     <ConfirmDialog
       v-if="pendingCopy !== null"

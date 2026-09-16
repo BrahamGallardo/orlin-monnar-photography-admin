@@ -1,3 +1,7 @@
 {
-  "apiBaseUrl": ""
+  "apiBaseUrl": "",
+  "storage": {
+    "maxUploadSizeMb": 25,
+    "allowedExtensions": [".jpg", ".jpeg", ".png", ".webp", ".heic"]
+  }
 }
