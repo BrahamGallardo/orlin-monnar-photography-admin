@@ -136,6 +136,39 @@ export function getGalleryCategories(
 }
 
 /**
+ * Reads every published category, walking the pages in order.
+ *
+ * @param signal - Caller owned signal.
+ * @returns The categories as the server sorts them.
+ * @remarks
+ * Needed by the dashboard, which adds up `photoCount` across categories. The backend
+ * does not clamp `pageSize` for this endpoint, but the default is kept so the pages
+ * requested match the ones the gallery view reads. Unpublished categories are left out:
+ * `includeDeactivated` is not sent.
+ */
+export async function getAllGalleryCategories(
+  signal?: AbortSignal
+): Promise<GalleryCategoryDto[]> {
+  const categories: GalleryCategoryDto[] = []
+  let pageIndex = 1
+  let hasNextPage = true
+
+  while (hasNextPage) {
+    const page = await getGalleryCategories({
+      pageIndex,
+      pageSize: DEFAULT_PAGE_SIZE,
+      signal
+    })
+
+    categories.push(...page.items)
+    hasNextPage = page.hasNextPage
+    pageIndex += 1
+  }
+
+  return categories
+}
+
+/**
  * Reads one category with its active photographs.
  *
  * @param id - Category identifier.
