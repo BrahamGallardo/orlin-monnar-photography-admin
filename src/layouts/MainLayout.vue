@@ -6,6 +6,7 @@ import Footer from '@/components/Footer.vue'
 import {
   LayoutDashboard,
   CalendarDays,
+  Package,
   Images,
   ChevronLeft,
   ChevronRight
@@ -18,6 +19,7 @@ const isMobile = ref(false)
 const navigation = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Citas', path: '/appointments', icon: CalendarDays },
+  { name: 'Paquetes', path: '/packages', icon: Package },
   { name: 'Galería', path: '/gallery', icon: Images }
 ]
 
