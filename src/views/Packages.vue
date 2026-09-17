@@ -56,7 +56,7 @@ const DEACTIVATED_FLAG = '1'
 const INCLUDES_LINE_BREAK = /\r?\n/
 
 /** Currencies offered by the form. A package stored with another one keeps it as an extra option. */
-const CURRENCY_OPTIONS: readonly string[] = [DEFAULT_PACKAGE_CURRENCY, 'USD']
+const CURRENCY_OPTIONS: readonly string[] = [DEFAULT_PACKAGE_CURRENCY, 'MXN']
 
 /** Highest `DisplayOrder` the backend can bind: the upper bound of a .NET `int`. */
 const DISPLAY_ORDER_MAX = 2147483647

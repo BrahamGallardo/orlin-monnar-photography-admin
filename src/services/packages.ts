@@ -52,7 +52,7 @@ export const PACKAGE_PRICE_DECIMALS = 2
 export const PACKAGE_CURRENCY_LENGTH = 3
 
 /** Currency the backend assigns when none is captured. */
-export const DEFAULT_PACKAGE_CURRENCY = 'MXN'
+export const DEFAULT_PACKAGE_CURRENCY = 'USD'
 
 /** Options accepted by {@link getPackages}. */
 export interface PackageQuery extends PagedQuery {

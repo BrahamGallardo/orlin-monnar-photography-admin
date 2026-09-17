@@ -62,9 +62,9 @@ onUnmounted(() => {
       isMobile ? (sidebarOpen ? 'w-64' : 'w-0') : (sidebarOpen ? 'w-64' : 'w-16'),
       isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'
     ]">
-      <div class="p-4 border-b flex items-center justify-between">
+      <div class="h-16 box-content px-4 border-b flex items-center justify-between shrink-0">
         <h3 v-if="sidebarOpen" class="text-sm font-semibold leading-tight">
-          Orlin Monnar Photography — Admin
+          Orlin Monnar Photography
         </h3>
         <button @click="toggleSidebar" class="p-2 hover:bg-accent rounded-md hidden lg:block"
           :class="{ 'mx-auto': !sidebarOpen }">

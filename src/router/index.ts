@@ -54,9 +54,10 @@ const router = createRouter({
  * Keeps private routes behind an active session.
  *
  * @remarks
- * The token lives in memory only, so a hard reload signs the user out and any deep
- * link lands here first. The intended route travels in the `redirect` query entry,
- * the same one `@/lib/http` writes when a 401 tears the session down.
+ * The session survives a reload through `sessionStorage`, but closing the tab or an
+ * expired token still lands any deep link here first. The intended route travels in
+ * the `redirect` query entry, the same one `@/lib/http` writes when a 401 tears the
+ * session down.
  */
 router.beforeEach((to) => {
   const { isAuthenticated } = useSession()

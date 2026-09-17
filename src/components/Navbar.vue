@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
+import { Menu, User, LogOut, ChevronDown } from 'lucide-vue-next'
 import { useSession } from '@/stores/session'
 
 defineProps<{
@@ -11,7 +11,6 @@ defineProps<{
 const router = useRouter()
 const { user, logout } = useSession()
 
-const searchQuery = ref('')
 const accountDropdownOpen = ref(false)
 const isSigningOut = ref(false)
 
@@ -25,11 +24,6 @@ const displayName = computed((): string => {
 
   return current.lastName === null ? current.name : `${current.name} ${current.lastName}`
 })
-
-const handleSearch = (e: Event) => {
-  e.preventDefault()
-  console.log('Search:', searchQuery.value)
-}
 
 const toggleAccountDropdown = () => {
   accountDropdownOpen.value = !accountDropdownOpen.value
@@ -69,29 +63,9 @@ const handleLogout = async (): Promise<void> => {
           >
             <Menu :size="20" />
           </button>
-
-          <form @submit="handleSearch" class="hidden md:block">
-            <div class="relative">
-              <Search :size="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                v-model="searchQuery"
-                type="search"
-                placeholder="Search..."
-                class="pl-10 pr-4 py-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-64 lg:w-96"
-              />
-            </div>
-          </form>
         </div>
 
         <div class="flex items-center gap-2">
-          <button
-            @click="onToggleSidebar"
-            class="hidden lg:block p-2 hover:bg-accent rounded-md"
-            aria-label="Toggle sidebar"
-          >
-            <Menu :size="20" />
-          </button>
-
           <div class="relative">
             <button
               @click="toggleAccountDropdown"
@@ -141,20 +115,6 @@ const handleLogout = async (): Promise<void> => {
             </transition>
           </div>
         </div>
-      </div>
-
-      <div class="md:hidden pb-3">
-        <form @submit="handleSearch">
-          <div class="relative">
-            <Search :size="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="Search..."
-              class="w-full pl-10 pr-4 py-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-        </form>
       </div>
     </div>
   </nav>
