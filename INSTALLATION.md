@@ -1,368 +1,176 @@
-# Material Dashboard Shadcn Vue by Creative Tim - Installation Guide
+# Orlin Monnar Photography — Admin · Instalación
 
-## Overview
+Guía para levantar el panel en una máquina de desarrollo y generar el build de producción. Qué hace el panel, sus convenciones y la API que consume están en el `README.md`.
 
-This is a modern CRM (Customer Relationship Management) template built with Vue 3, Vite, and shadcn-vue components. It features a clean, minimalistic design perfect for developers to customize for their specific needs.
+---
 
-## Features
+## Requisitos
 
-- **7 Complete Pages**:
-  - Dashboard - Overview with key metrics and activity
-  - Contacts - Contact management with search
-  - Companies - Company directory and details
-  - Deals/Pipeline - Kanban-style deal tracking
-  - Tasks - Task management with status tracking
-  - Reports - Analytics and performance metrics
-  - Settings - User preferences and configuration
+| Herramienta | Versión |
+|---|---|
+| Node.js | 18, o 20 y posteriores (lo exige Vite 5.4) |
+| npm | el que trae Node |
+| API `omp-api` | corriendo en el perfil `http` de Kestrel (`localhost:5081`) |
 
-- **Modern Tech Stack**:
-  - Vue 3 with Composition API
-  - TypeScript for type safety
-  - Vite for fast development
-  - shadcn-vue components
-  - Tailwind CSS for styling
-  - Vue Router for navigation
-  - Chart.js with vue-chartjs for interactive charts
+La API tiene sus propios requisitos (SDK de .NET 8, SQL Server, user secrets). Están en el README de **Orlin Monnar Photography Core**.
 
-## Prerequisites
+---
 
-Before you begin, ensure you have the following installed:
-- Node.js 20.19+ or 22.12+ (required for Vite)
-- npm or yarn package manager
+## 1. Instalar dependencias
 
-## Installation Steps
-
-### 1. Clone or Download the Template
-
-```bash
-# If using git
-git clone https://github.com/creativetimofficial/material-dashboard-shadcn-vue.git
-cd vue-crm-template
-
-# Or download and extract the ZIP file
-```
-
-### 2. Install Dependencies
-
-```bash
+```powershell
+# desde la carpeta del panel
 npm install
 ```
 
-This will install all required packages including:
-- Vue 3 and Vue Router
-- Vite build tool
-- TypeScript
-- Tailwind CSS and PostCSS
-- shadcn-vue components (radix-vue, lucide-vue-next)
-- Chart.js and vue-chartjs for data visualization
-- Utility libraries (clsx, tailwind-merge)
+> `node_modules` depende del sistema operativo: Rollup instala un binario nativo por plataforma. Un `node_modules` instalado en Windows no sirve en Linux ni en WSL, y al revés. Si cambias de entorno, bórralo y vuelve a correr `npm install` ahí.
 
-### 3. Start Development Server
+No se agregan paquetes nuevos al proyecto (ni `axios`, ni `pinia`, ni librerías de UI). El cliente HTTP, el store de sesión y los componentes base ya existen en `src/`.
 
-```bash
-npm run dev
-```
+---
 
-The application will start on `http://localhost:5000`
+## 2. Revisar la configuración
 
-### 4. Build for Production
-
-```bash
-npm run build
-```
-
-This creates an optimized production build in the `dist` folder.
-
-### 5. Preview Production Build
-
-```bash
-npm run preview
-```
-
-## Project Structure
+No hay archivos `.env`. La configuración está en JSON versionados, uno por ambiente:
 
 ```
-vue-crm-template/
-├── src/
-│   ├── assets/          # CSS and static assets
-│   │   └── index.css    # Tailwind CSS and global styles
-│   ├── components/      # Reusable components
-│   │   └── ui/          # shadcn-vue UI components
-│   │       ├── Button.vue
-│   │       ├── Card.vue
-│   │       ├── CardHeader.vue
-│   │       ├── CardTitle.vue
-│   │       └── CardContent.vue
-│   ├── layouts/         # Layout components
-│   │   └── MainLayout.vue  # Main app layout with sidebar
-│   ├── lib/             # Utility functions
-│   │   └── utils.ts     # Helper functions (cn for classnames)
-│   ├── router/          # Vue Router configuration
-│   │   └── index.ts     # Route definitions
-│   ├── views/           # Page components
-│   │   ├── Dashboard.vue
-│   │   ├── Contacts.vue
-│   │   ├── Companies.vue
-│   │   ├── Deals.vue
-│   │   ├── Tasks.vue
-│   │   ├── Reports.vue
-│   │   └── Settings.vue
-│   ├── App.vue          # Root component
-│   ├── main.ts          # Application entry point
-│   └── vite-env.d.ts    # TypeScript declarations
-├── index.html           # HTML entry point
-├── vite.config.ts       # Vite configuration
-├── tailwind.config.js   # Tailwind CSS configuration
-├── postcss.config.js    # PostCSS configuration
-├── tsconfig.json        # TypeScript configuration
-└── package.json         # Project dependencies
+src/config/app.config.development.json   → npm start
+src/config/app.config.production.json    → npm run build
 ```
 
-## Customization Guide
+En desarrollo, `apiBaseUrl` debe apuntar a la API:
 
-### Adding New Pages
-
-1. Create a new Vue component in `src/views/`:
-```vue
-<script setup lang="ts">
-// Your component logic
-</script>
-
-<template>
-  <div>Your page content</div>
-</template>
-```
-
-2. Add the route in `src/router/index.ts`:
-```typescript
+```json
 {
-  path: 'your-page',
-  name: 'YourPage',
-  component: () => import('@/views/YourPage.vue')
+  "apiBaseUrl": "http://localhost:5081",
+  "storage": {
+    "maxUploadSizeMb": 25,
+    "allowedExtensions": [".jpg", ".jpeg", ".png", ".webp", ".heic"]
+  }
 }
 ```
 
-3. Add navigation item in `src/layouts/MainLayout.vue`:
-```typescript
-const navigation = [
-  // ... existing items
-  { name: 'Your Page', path: '/your-page', icon: YourIcon }
-]
-```
+Si levantas la API en otro puerto (por ejemplo con el perfil IIS Express), ajusta solo `apiBaseUrl`. Los valores de `storage` deben coincidir con la sección `Storage` del `appsettings.json` de la API.
 
-### Customizing Colors
+En producción, `apiBaseUrl` se queda como `""`: el panel y la API comparten origen.
 
-The template uses Vue.js green as the primary color theme. Edit `src/assets/index.css` to change the color scheme:
-```css
-:root {
-  --primary: 153 47% 49%;  /* Vue.js green (#42b883) */
-  --ring: 153 47% 49%;     /* Focus ring color */
-  /* ... other color variables */
+---
+
+## 3. Permitir el origen del panel en la API
+
+En `appsettings.Development.json` de `omp-api`, el origen del dev server debe aparecer en `Cors:AllowedOrigins`:
+
+```json
+"Cors": {
+  "AllowedOrigins": [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200"
+  ]
 }
 ```
 
-### Adding New Components
+Ya están incluidos. Solo hay que tocarlo si cambias el puerto del panel.
 
-Create components in `src/components/` and import them where needed:
-```vue
-<script setup lang="ts">
-import YourComponent from '@/components/YourComponent.vue'
-</script>
+---
+
+## 4. Levantar el panel
+
+```powershell
+npm start
 ```
 
-### Styling Guidelines
+Abre **`http://localhost:4200/admin/`**. La barra final importa: el panel vive bajo `/admin/` también en desarrollo.
 
-This template uses Tailwind CSS utility classes for styling:
-- Use predefined color classes: `text-primary`, `bg-card`, etc.
-- Use spacing utilities: `p-4`, `m-2`, `gap-4`
-- Use responsive prefixes: `md:grid-cols-2`, `lg:grid-cols-4`
+Desde VS Code, **Run and Debug → Start (Dev)** hace lo mismo y abre Edge. Al detener la depuración, la tarea `kill: vite` libera el puerto 4200.
 
-The `cn()` utility function (from `@/lib/utils.ts`) combines Tailwind classes:
-```typescript
-import { cn } from '@/lib/utils'
+> El puerto 5000 que aparece en `vite.config.ts` solo aplica a `npm run preview`; `npm start` lo reemplaza con `--port 4200`.
 
-const className = cn('base-class', 'additional-class', props.class)
+### Comprobar que todo está conectado
+
+1. Entra con el administrador del seed de la API (usuario y contraseña en el README de Core).
+2. El dashboard debe mostrar totales, próximas citas y la gráfica por estatus sin avisos de error.
+3. Recarga la página: la sesión debe mantenerse. Cierra la pestaña y vuelve a abrir: debe pedir el login.
+
+Si el login responde *Sin conexión con el servidor*, la API no está corriendo o `apiBaseUrl` no apunta a ella.
+
+---
+
+## 5. Verificar tipos
+
+```powershell
+npx vue-tsc --noEmit -p tsconfig.json
 ```
 
-## Component Library
+Es el mismo chequeo que corre `npm run build` antes de empaquetar, pero sin generar archivos.
 
-### UI Components
+---
 
-This template includes basic shadcn-vue components:
+## 6. Build de producción
 
-**Button**
-```vue
-<Button variant="default">Click me</Button>
-<Button variant="outline">Outline</Button>
-<Button size="sm">Small</Button>
+```powershell
+npm run build      # vue-tsc -b && vite build  →  dist/
+npm run preview    # sirve dist/ en http://localhost:4173/admin/ … o el puerto 5000 configurado
 ```
 
-**Card**
-```vue
-<Card>
-  <CardHeader>
-    <CardTitle>Title</CardTitle>
-  </CardHeader>
-  <CardContent>
-    Content goes here
-  </CardContent>
-</Card>
-```
+`dist/` es lo que se despliega. Todos sus activos ya llevan el prefijo `/admin/`.
 
-### Adding More shadcn-vue Components
+### Publicar bajo `/admin`
 
-To add more components from shadcn-vue:
+El servidor debe cumplir dos cosas:
 
-1. Create the component file in `src/components/ui/`
-2. Follow the shadcn-vue documentation for implementation
-3. Import and use in your pages
+- Servir `dist/` en `/admin/`.
+- Responder `index.html` para cualquier ruta bajo `/admin/` que no sea un archivo, porque el router usa *history mode*. Sin esto, recargar `/admin/appointments` da 404.
 
-## Configuration
+Referencia para nginx (la configuración definitiva del sitio es la tarea T30):
 
-### Vite Configuration
-
-Edit `vite.config.ts` to customize:
-- Server port (default: 5000)
-- Build output directory
-- Path aliases
-- Plugins
-
-### TypeScript Configuration
-
-Edit `tsconfig.json` for TypeScript settings:
-- Compiler options
-- Path mappings
-- Include/exclude patterns
-
-## Development Tips
-
-1. **Hot Module Replacement**: Vite provides instant HMR. Changes appear immediately.
-
-2. **TypeScript**: The template uses TypeScript for type safety. Define types for your data:
-```typescript
-interface Contact {
-  id: string
-  name: string
-  email: string
+```nginx
+location /admin/ {
+    alias     /var/www/omp/admin/;
+    try_files $uri $uri/ /admin/index.html;
 }
 ```
 
-3. **Vue Composition API**: Use the `<script setup>` syntax for cleaner code:
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-const count = ref(0)
-</script>
+> `server.js` es del template, sirve la ruta `/material-dashboard-shadcn-vue` y **no** se usa para desplegar el panel.
+
+---
+
+## Agregar una vista
+
+Así se agregó cada módulo del panel (citas, galería, paquetes):
+
+1. **Tipos.** Los DTO nuevos van en `src/types/api.ts`, en camelCase, tal como los serializa la API.
+2. **Servicio.** Crea `src/services/<recurso>.ts` con una constante `BASE_PATH` y una función por endpoint sobre `http` de `@/lib/http`. Las longitudes máximas y los tamaños de página se exportan como constantes desde ahí.
+3. **Vista.** Crea `src/views/<Recurso>.vue` con `<script setup lang="ts">`. La vista solo llama al servicio, lee sus filtros y su página de la querystring, y maneja los fallos por `ApiError.kind`.
+4. **Ruta.** Agrégala como hija de `/` en `src/router/index.ts`. Así hereda `requiresAuth` y se pinta dentro de `MainLayout`:
+
+```ts
+   {
+     path: 'resource',
+     name: 'Resource',
+     component: () => import('@/views/Resource.vue')
+   }
 ```
 
-4. **Responsive Design**: Test on different screen sizes using browser dev tools.
+5. **Menú.** Agrega la entrada al arreglo `navigation` de `src/layouts/MainLayout.vue`, con un icono de `lucide-vue-next`.
 
-## Integrating with Backend
+El JSDoc se escribe en inglés y los textos de la interfaz en español.
 
-To connect this template to a backend API:
+---
 
-1. Install axios or fetch wrapper:
-```bash
-npm install axios
-```
+## Problemas comunes
 
-2. Create API service files in `src/api/`:
-```typescript
-import axios from 'axios'
+**Error de CORS en la consola.** El origen del panel no está en `Cors:AllowedOrigins` de la API, o la API corre con un ambiente distinto de `Development`.
 
-const api = axios.create({
-  baseURL: 'https://your-api.com'
-})
+**Página en blanco o activos con 404 en desarrollo.** Entraste por `http://localhost:4200/` en lugar de `/admin/`.
 
-export const getContacts = () => api.get('/contacts')
-export const createContact = (data) => api.post('/contacts', data)
-```
+**404 al recargar en producción.** Falta el *fallback* a `/admin/index.html` en el servidor.
 
-3. Use in components:
-```vue
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getContacts } from '@/api/contacts'
+**`Cannot find module @rollup/rollup-…`.** El `node_modules` es de otro sistema operativo. Reinstálalo en el entorno donde vas a compilar.
 
-const contacts = ref([])
+**El puerto 4200 está ocupado.** Corre la tarea `kill: vite` de VS Code o `npx kill-port 4200`.
 
-onMounted(async () => {
-  const response = await getContacts()
-  contacts.value = response.data
-})
-</script>
-```
+**Te saca al login a media sesión.** El token expiró sin que se pudiera renovar (por ejemplo, la computadora estuvo suspendida más que la vida del token). Es el comportamiento esperado: la API no emite refresh token.
 
-## State Management
+**"Demasiadas solicitudes" en el login.** El endpoint admite 5 intentos por minuto por IP. Espera un minuto.
 
-For larger applications, consider adding state management:
-
-```bash
-npm install pinia
-```
-
-Create stores in `src/stores/` and use throughout your app.
-
-## Deployment
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Deploy to Popular Platforms
-
-**Netlify / Vercel**
-- Connect your git repository
-- Build command: `npm run build`
-- Publish directory: `dist`
-
-**Static Hosting**
-- Upload contents of `dist` folder to your server
-- Ensure proper routing configuration for SPA
-
-## Troubleshooting
-
-**Port already in use**
-- Change port in `vite.config.ts`
-- Or kill the process using port 5000
-
-**TypeScript errors**
-- Run `npm run build` to see all errors
-- Check `tsconfig.json` configuration
-
-**Styling issues**
-- Verify Tailwind CSS is properly configured
-- Check PostCSS configuration
-- Ensure `index.css` is imported in `main.ts`
-
-## Browser Support
-
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## License
-
-This template is free to use for personal and commercial projects.
-
-## Support
-
-For issues and questions:
-- Check the documentation
-- Review Vue 3 and Vite documentation
-- Check shadcn-vue component documentation
-
-## Next Steps
-
-1. Customize the design to match your brand
-2. Add authentication
-3. Connect to your backend API
-4. Add state management (Pinia)
-5. Implement form validation
-6. Add loading states and error handling
-7. Set up testing (Vitest)
-8. Configure CI/CD pipeline
-
-Happy coding! 🚀
+**"Archivo demasiado grande" al subir fotos.** El archivo supera `Storage:MaxUploadSizeMB`. Si en producción aparece con archivos más chicos, el límite de cuerpo del proxy está por debajo del de la API.
