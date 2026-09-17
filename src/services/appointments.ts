@@ -135,3 +135,23 @@ export function cancelAppointment(
 ): Promise<AppointmentDto> {
   return http.post<AppointmentDto>(`${BASE_PATH}/${id}/cancel`, change)
 }
+
+/**
+ * Marks an appointment as delivered.
+ *
+ * @param id - Appointment identifier.
+ * @param change - Optional administrator notes.
+ * @returns The appointment as it was left by the transition.
+ * @throws {ApiError} `validation` when the appointment is not confirmed, or already
+ * sits in a final status. Only `Confirmed` admits this transition.
+ * @throws {ApiError} `notFound` when the appointment does not exist.
+ * @remarks
+ * Unlike {@link confirmAppointment} and {@link cancelAppointment}, this one sends no
+ * email: the backend closes the appointment without notifying the client.
+ */
+export function completeAppointment(
+  id: number,
+  change: AppointmentStatusChangeDto
+): Promise<AppointmentDto> {
+  return http.post<AppointmentDto>(`${BASE_PATH}/${id}/complete`, change)
+}

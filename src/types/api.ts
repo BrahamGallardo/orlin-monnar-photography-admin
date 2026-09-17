@@ -144,12 +144,14 @@ export interface AppointmentDto extends BaseDto {
   status: AppointmentStatus
   confirmedDate: string | null
   cancelledDate: string | null
+  /** Date the session was marked as delivered, as an ISO 8601 UTC string. */
+  completedDate: string | null
   /** Internal notes written by the administrator. */
   adminNotes: string | null
 }
 
 /**
- * Optional payload of the confirm and cancel actions.
+ * Optional payload of the confirm, cancel and complete actions.
  *
  * @remarks
  * The body is not optional even though every field is: the controller binds it with

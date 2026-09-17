@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { CalendarCheck, CalendarX2, Loader2 } from 'lucide-vue-next'
+import { CalendarCheck, CalendarX2, CheckCheck, Loader2 } from 'lucide-vue-next'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import { ApiError } from '@/lib/http'
-import { canCancel, canConfirm, presentationOf } from '@/lib/appointmentStatus'
+import { canCancel, canComplete, canConfirm, presentationOf } from '@/lib/appointmentStatus'
 import { formatCurrency, formatDateTime } from '@/lib/format'
 import {
   ADMIN_NOTES_MAX_LENGTH,
   cancelAppointment,
+  completeAppointment,
   confirmAppointment,
   getAppointmentById
 } from '@/services/appointments'
@@ -18,7 +19,7 @@ import { getPackageById } from '@/services/packages'
 import type { AppointmentDto, AppointmentStatusChangeDto, PackageDto } from '@/types/api'
 
 /**
- * Appointment detail, with the confirm and cancel actions.
+ * Appointment detail, with the confirm, cancel and complete actions.
  *
  * @remarks
  * Opened from the `detail` query string entry owned by `@/views/Appointments.vue`, so
@@ -26,7 +27,7 @@ import type { AppointmentDto, AppointmentStatusChangeDto, PackageDto } from '@/t
  */
 
 /** Action awaiting confirmation. */
-type PendingAction = 'confirm' | 'cancel'
+type PendingAction = 'confirm' | 'cancel' | 'complete'
 
 const props = defineProps<{
   /** Appointment to display. Null keeps the dialog closed. */
@@ -170,10 +171,19 @@ const submit = async (): Promise<void> => {
   actionError.value = null
 
   try {
-    const updated =
-      action === 'confirm'
-        ? await confirmAppointment(id, change)
-        : await cancelAppointment(id, change)
+    let updated: AppointmentDto
+
+    switch (action) {
+      case 'confirm':
+        updated = await confirmAppointment(id, change)
+        break
+      case 'cancel':
+        updated = await cancelAppointment(id, change)
+        break
+      default:
+        updated = await completeAppointment(id, change)
+        break
+    }
 
     appointment.value = updated
     pendingAction.value = null
@@ -199,19 +209,36 @@ const pendingCopy = computed(() => {
 
   const email = appointment.value.email
 
-  return pendingAction.value === 'confirm'
-    ? {
+  switch (pendingAction.value) {
+    case 'confirm':
+      return {
         title: 'Confirmar la cita',
         description: `Se enviará un correo a ${email} avisando que su sesión quedó confirmada.`,
+        warning: 'Esta acción envía un correo automático al cliente. No se puede deshacer.',
+        notice: null,
         confirmLabel: 'Confirmar y notificar',
         destructive: false
       }
-    : {
+    case 'cancel':
+      return {
         title: 'Cancelar la cita',
         description: `Se enviará un correo a ${email} avisando que su sesión fue cancelada.`,
+        warning: 'Esta acción envía un correo automático al cliente. No se puede deshacer.',
+        notice: null,
         confirmLabel: 'Cancelar y notificar',
         destructive: true
       }
+    default:
+      return {
+        title: 'Marcar la cita como realizada',
+        description: 'La cita quedará cerrada como sesión realizada.',
+        warning: null,
+        notice:
+          'Al cliente no se le envía ningún correo. Completada es un estatus final: después no se podrá confirmar ni cancelar.',
+        confirmLabel: 'Marcar como realizada',
+        destructive: false
+      }
+  }
 })
 
 /** Included items of the package, one per line. */
@@ -236,7 +263,11 @@ const packageIncludes = computed((): string[] =>
       Cargando la cita…
     </div>
 
-    <p v-else-if="errorMessage !== null" role="alert" class="py-12 text-center text-sm text-destructive">
+    <p
+      v-else-if="errorMessage !== null"
+      role="alert"
+      class="py-12 text-center text-sm text-destructive"
+    >
       {{ errorMessage }}
     </p>
 
@@ -254,7 +285,10 @@ const packageIncludes = computed((): string[] =>
           <div>
             <dt class="text-xs text-muted-foreground">Correo</dt>
             <dd>
-              <a class="text-primary underline-offset-4 hover:underline" :href="`mailto:${appointment.email}`">
+              <a
+                class="text-primary underline-offset-4 hover:underline"
+                :href="`mailto:${appointment.email}`"
+              >
                 {{ appointment.email }}
               </a>
             </dd>
@@ -262,7 +296,10 @@ const packageIncludes = computed((): string[] =>
           <div>
             <dt class="text-xs text-muted-foreground">Teléfono</dt>
             <dd>
-              <a class="text-primary underline-offset-4 hover:underline" :href="`tel:${appointment.phone}`">
+              <a
+                class="text-primary underline-offset-4 hover:underline"
+                :href="`tel:${appointment.phone}`"
+              >
                 {{ appointment.phone }}
               </a>
             </dd>
@@ -292,6 +329,10 @@ const packageIncludes = computed((): string[] =>
           <div v-if="appointment.cancelledDate !== null">
             <dt class="text-xs text-muted-foreground">Cancelada el</dt>
             <dd>{{ formatDateTime(appointment.cancelledDate) }}</dd>
+          </div>
+          <div v-if="appointment.completedDate !== null">
+            <dt class="text-xs text-muted-foreground">Realizada el</dt>
+            <dd>{{ formatDateTime(appointment.completedDate) }}</dd>
           </div>
         </dl>
       </section>
@@ -345,8 +386,18 @@ const packageIncludes = computed((): string[] =>
     <template #footer>
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <p class="text-xs text-muted-foreground sm:mr-auto">
-          Confirmar o cancelar envía un correo al cliente.
+          Confirmar y cancelar envían un correo al cliente; marcar como realizada, no.
         </p>
+
+        <Button
+          type="button"
+          variant="outline"
+          :disabled="appointment === null || !canComplete(appointment.status)"
+          @click="startAction('complete')"
+        >
+          <CheckCheck :size="16" class="mr-2" />
+          Marcar realizada
+        </Button>
 
         <Button
           type="button"
@@ -375,6 +426,8 @@ const packageIncludes = computed((): string[] =>
     :open="pendingAction !== null"
     :title="pendingCopy.title"
     :description="pendingCopy.description"
+    :warning="pendingCopy.warning"
+    :notice="pendingCopy.notice"
     :confirm-label="pendingCopy.confirmLabel"
     :destructive="pendingCopy.destructive"
     :is-busy="isSubmitting"
@@ -383,7 +436,9 @@ const packageIncludes = computed((): string[] =>
     @confirm="submit"
   >
     <div class="space-y-1.5">
-      <label for="admin-notes" class="text-sm font-medium">Notas del administrador (opcional)</label>
+      <label for="admin-notes" class="text-sm font-medium">
+        Notas del administrador (opcional)
+      </label>
       <textarea
         id="admin-notes"
         v-model="adminNotes"
@@ -394,7 +449,8 @@ const packageIncludes = computed((): string[] =>
         placeholder="Uso interno. No se incluyen en el correo del cliente."
       ></textarea>
       <p class="text-xs text-muted-foreground">
-        {{ adminNotes.length }} / {{ ADMIN_NOTES_MAX_LENGTH }} caracteres. Sólo visibles en el panel.
+        {{ adminNotes.length }} / {{ ADMIN_NOTES_MAX_LENGTH }} caracteres. Sólo visibles en el
+        panel.
       </p>
     </div>
   </ConfirmDialog>

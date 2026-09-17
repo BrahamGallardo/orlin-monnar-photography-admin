@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import {
   AlertDialogCancel,
   AlertDialogContent,
@@ -9,7 +8,7 @@ import {
   AlertDialogRoot,
   AlertDialogTitle
 } from 'radix-vue'
-import { AlertTriangle, Loader2 } from 'lucide-vue-next'
+import { AlertTriangle, Info, Loader2 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 
 /**
@@ -21,44 +20,37 @@ import Button from '@/components/ui/Button.vue'
  * so a failure keeps the dialog open showing {@link errorMessage}.
  */
 
-/** Warning used by the callers that do not set one of their own. */
-const DEFAULT_WARNING = 'Esta acción envía un correo automático al cliente. No se puede deshacer.'
-
 const props = defineProps<{
   /** Controlled open state. */
   open: boolean
   /** Accessible name of the dialog. */
   title: string
-  /** What the action does, including its side effects. */
+  /** What the action does. */
   description: string
   /** Label of the confirming button. */
   confirmLabel: string
+  /** Consequence worth stressing, highlighted. Null renders nothing. */
+  warning?: string | null
+  /**
+   * Neutral remark about the action, rendered muted. Null renders nothing.
+   *
+   * @remarks
+   * For a consequence the operator should read but that is not a risk, such as an
+   * action that deliberately does *not* notify anyone.
+   */
+  notice?: string | null
   /** Whether the confirming button is styled as destructive. */
   destructive?: boolean
   /** Whether the action is in flight. Locks every control. */
   isBusy?: boolean
   /** Failure of the last attempt, if any. */
   errorMessage?: string | null
-  /**
-   * Warning shown above the actions.
-   *
-   * @remarks
-   * Omitted falls back to {@link DEFAULT_WARNING}, the copy of the appointment actions,
-   * which are the only callers that predate this prop. Null hides the block, for an
-   * action that neither notifies anyone nor is irreversible.
-   */
-  warning?: string | null
 }>()
 
 const emit = defineEmits<{
   (event: 'update:open', open: boolean): void
   (event: 'confirm'): void
 }>()
-
-/** Warning to render, or null when the caller opted out. */
-const warningText = computed((): string | null =>
-  props.warning === undefined ? DEFAULT_WARNING : props.warning
-)
 
 /**
  * Blocks a dismissal while the action is in flight.
@@ -94,11 +86,16 @@ const onDismissAttempt = (event: Event): void => {
         </div>
 
         <div
-          v-if="warningText !== null"
+          v-if="warning"
           class="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3"
         >
           <AlertTriangle :size="16" class="mt-0.5 shrink-0 text-amber-700" />
-          <p class="text-xs text-amber-700">{{ warningText }}</p>
+          <p class="text-xs text-amber-700">{{ warning }}</p>
+        </div>
+
+        <div v-if="notice" class="flex items-start gap-2 rounded-md border bg-muted/50 p-3">
+          <Info :size="16" class="mt-0.5 shrink-0 text-muted-foreground" />
+          <p class="text-xs text-muted-foreground">{{ notice }}</p>
         </div>
 
         <slot />
@@ -114,7 +111,6 @@ const onDismissAttempt = (event: Event): void => {
 
           <Button
             type="button"
-            :variant="destructive === true ? 'default' : 'default'"
             :class="destructive === true ? 'bg-destructive hover:bg-destructive/90' : undefined"
             :disabled="isBusy === true"
             @click="emit('confirm')"

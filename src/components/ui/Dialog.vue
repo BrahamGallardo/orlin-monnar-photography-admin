@@ -20,28 +20,17 @@ import { cn } from '@/lib/utils'
  * is missing.
  */
 
-const props = withDefaults(
-  defineProps<{
-    /** Controlled open state. */
-    open: boolean
-    /** Accessible name of the dialog. */
-    title: string
-    /** Accessible description, rendered under the title. */
-    description: string
-    /**
-     * Whether Escape and an outside click close the dialog. Defaults to true.
-     *
-     * @remarks
-     * The default is declared here instead of being left to the optional prop: Vue casts
-     * an *absent* boolean prop to `false`, not to `undefined`, so omitting it used to
-     * produce a dialog nobody could close, with its close button disabled and the body
-     * left at `pointer-events: none` by the dismissable layer.
-     */
-    dismissible?: boolean
-    class?: string
-  }>(),
-  { dismissible: true }
-)
+const props = defineProps<{
+  /** Controlled open state. */
+  open: boolean
+  /** Accessible name of the dialog. */
+  title: string
+  /** Accessible description, rendered under the title. */
+  description: string
+  /** Whether Escape and an outside click close the dialog. Defaults to true. */
+  dismissible?: boolean
+  class?: string
+}>()
 
 defineEmits<{
   (event: 'update:open', open: boolean): void
